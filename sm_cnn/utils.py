@@ -3,6 +3,7 @@ import os
 import re
 import string
 
+
 from gensim.models.keyedvectors import KeyedVectors
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
@@ -25,6 +26,11 @@ def logargs(func):
         return func(*args, **kwargs)
     return inner
 
+def load_word_embeddings(word_embeddings_file):
+    vocab, emb = torchwordemb.load_word2vec_bin(word_embeddings_file)
+    print(vocab.size())
+    print(emb[vocab['apple']])
+    return vocab, emb
 
 def cache_word_embeddings(word_embeddings_file, cache_file):
     if not word_embeddings_file.endswith('.gz'):
@@ -169,11 +175,13 @@ def get_test_qids_labels(dataset_folder, set_folder):
 
 if __name__ == "__main__":
 
-    vocab = ["unk", "idontreallythinkthiswordexists", "hello"]
+    # vocab = ["unk", "idontreallythinkthiswordexists", "hello"]
 
-    w2v_dict = {}
-    load_cached_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.cache", vocab, w2v_dict)
+    vocab, vec = load_word_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.cache")
 
-    for w, v in w2v_dict.iteritems():
-        print(w)
-        print(v)
+    # w2v_dict = {}
+    # load_cached_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.cache", vocab, w2v_dict)
+
+    # for w, v in w2v_dict.iteritems():
+    #     print(w)
+    #     print(v)
