@@ -7,6 +7,8 @@ import numpy as np
 import torch
 from gensim.models.keyedvectors import KeyedVectors
 
+import torchwordemb
+
 # logging setup
 import logging
 logger = logging.getLogger(__name__)
@@ -23,6 +25,10 @@ def logargs(func):
         logger.info('%s : %s %s' % (func.__name__, args, kwargs))
         return func(*args, **kwargs)
     return inner
+
+def load_word_embeddings(word_embeddings_file):
+    vocab, emb = torchwordemb.load_word2vec_bin(word_embeddings_file)    
+    return vocab, emb
 
 
 def cache_word_embeddings(word_embeddings_file, cache_file):
@@ -168,11 +174,15 @@ def get_test_qids_labels(dataset_folder, set_folder):
 
 if __name__ == "__main__":
 
-    vocab = ["unk", "idontreallythinkthiswordexists", "hello"]
+    # vocab = ["unk", "idontreallythinkthiswordexists", "hello"]
 
-    w2v_dict = {}
-    load_cached_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.cache", vocab, w2v_dict)
+    # w2v_dict = {}
+    # load_cached_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.cache", vocab, w2v_dict)
 
-    for w, v in w2v_dict.iteritems():
-        print(w)
-        print(v)
+    # for w, v in w2v_dict.iteritems():
+    #     print(w)
+    #     print(v)
+
+    vocab, emb = load_word_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.bin")
+    print(len(vocab))
+    print(emb[vocab['apple']])
