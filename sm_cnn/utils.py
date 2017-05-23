@@ -187,3 +187,7 @@ if __name__ == "__main__":
     vocab, emb = load_word_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.bin")
     print(len(vocab))
     print(emb[vocab['apple']])
+
+    vocab, emb = load_word_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.bin")
+    print(len(vocab))
+    print(emb[vocab['apple']])
