@@ -9,6 +9,7 @@ from nltk.stem import PorterStemmer
 import numpy as np
 
 import torchwordemb
+from tqdm import tqdm
 
 # logging setup
 import logging
@@ -40,13 +41,11 @@ def word2vec_load_bin_vec(word_embeddings_file, words):
     word_vecs = {}
     with open(word_embeddings_file, "rb") as f:
         header = f.readline()
-        vocab_size, layer1_size = map(int, header.split())
-        binary_len = np.dtype('float32').itemsize * layer1_size
-        print('vocab_size, layer1_size', vocab_size, layer1_size)
+        vocab_size, vec_dim = map(int, header.split())
+        binary_len = np.dtype('float32').itemsize * vec_dim
+        print('vocab_size, vec_dim', vocab_size, vec_dim)
         count = 0
-        for i, line in enumerate(range(vocab_size)):
-            if i % 10000 == 0:
-                print('.', end='')
+        for line in tqdm(range(vocab_size)):
             word = []
             while True:
                 ch = f.read(1)
@@ -55,7 +54,6 @@ def word2vec_load_bin_vec(word_embeddings_file, words):
                     break
                 if ch != b'\n':
                     word.append(ch)
-            
             if word.decode('utf-8') in vocab:
                 count += 1
                 word_vecs[word] = np.fromstring(f.read(binary_len), dtype='float32')
@@ -63,7 +61,7 @@ def word2vec_load_bin_vec(word_embeddings_file, words):
                 f.read(binary_len)
         print("done")
         print("Words found in wor2vec embeddings", count)
-        return word_vecs
+        return word_vecs, count, vec_dim
 
 
 def cache_word_embeddings(word_embeddings_file, cache_file):
