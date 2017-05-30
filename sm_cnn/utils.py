@@ -27,8 +27,42 @@ def logargs(func):
     return inner
 
 def load_word_embeddings(word_embeddings_file):
-    vocab, emb = torchwordemb.load_word2vec_bin(word_embeddings_file)    
+    vocab, emb = torchwordemb.load_word2vec_bin(word_embeddings_file)
     return vocab, emb
+
+def word2vec_load_bin_vec(word_embeddings_file, words):
+    """
+    Loads 300x1 word vecs from Google (Mikolov) word2vec
+    """
+    print(word_embeddings_file)
+    vocab = set(words)
+    word_vecs = {}
+    with open(word_embeddings_file, "rb") as f:
+        header = f.readline()
+        vocab_size, layer1_size = map(int, header.split())
+        binary_len = np.dtype('float32').itemsize * layer1_size
+        print('vocab_size, layer1_size', vocab_size, layer1_size)
+        count = 0
+        for i, line in enumerate(range(vocab_size)):
+            if i % 10000 == 0:
+                print('.', end='')
+            word = []
+            while True:
+                ch = f.read(1)
+                if ch == b' ':
+                    word = str(b''.join(word), errors='ignore').encode('utf-8')
+                    break
+                if ch != b'\n':
+                    word.append(ch)
+            
+            if word.decode('utf-8') in vocab:
+                count += 1
+                word_vecs[word] = np.fromstring(f.read(binary_len), dtype='float32')
+            else:
+                f.read(binary_len)
+        print("done")
+        print("Words found in wor2vec embeddings", count)
+        return word_vecs
 
 
 def cache_word_embeddings(word_embeddings_file, cache_file):
@@ -174,19 +208,17 @@ def get_test_qids_labels(dataset_folder, set_folder):
 
 if __name__ == "__main__":
 
-    # vocab = ["unk", "idontreallythinkthiswordexists", "hello"]
+    vocab = ["unk", "idontreallythinkthiswordexists", "hello"]
 
     # w2v_dict = {}
     # load_cached_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.cache", vocab, w2v_dict)
+    
+    w2v_dict = word2vec_load_bin_vec("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.bin", vocab)
+    for w, v in w2v_dict.items():
+        print(w, v)
 
-    # for w, v in w2v_dict.iteritems():
-    #     print(w)
-    #     print(v)
+    # vocab, emb = load_word_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.bin")
+    # print(len(vocab))
+    # print(emb[vocab['apple']])
 
-    vocab, emb = load_word_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.bin")
-    print(len(vocab))
-    print(emb[vocab['apple']])
-
-    vocab, emb = load_word_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.bin")
-    print(len(vocab))
-    print(emb[vocab['apple']])
+    
