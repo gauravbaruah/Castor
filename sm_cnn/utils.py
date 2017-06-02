@@ -5,10 +5,8 @@ import sys
 
 import numpy as np
 import torch
-from gensim.models.keyedvectors import KeyedVectors
 
 import torchwordemb
-from tqdm import tqdm
 
 # logging setup
 import logging
@@ -29,39 +27,9 @@ def logargs(func):
 
 def load_word_embeddings(word_embeddings_file):
     vocab, emb = torchwordemb.load_word2vec_bin(word_embeddings_file)
+    print(vocab.size())
+    print(emb[vocab['apple']])
     return vocab, emb
-
-def word2vec_load_bin_vec(word_embeddings_file, words):
-    """
-    Loads 300x1 word vecs from Google (Mikolov) word2vec
-    """
-    print(word_embeddings_file)
-    vocab = set(words)
-    word_vecs = {}
-    with open(word_embeddings_file, "rb") as f:
-        header = f.readline()
-        vocab_size, vec_dim = map(int, header.split())
-        binary_len = np.dtype('float32').itemsize * vec_dim
-        print('vocab_size, vec_dim', vocab_size, vec_dim)
-        count = 0
-        for line in tqdm(range(vocab_size)):
-            word = []
-            while True:
-                ch = f.read(1)
-                if ch == b' ':
-                    word = str(b''.join(word), errors='ignore').encode('utf-8')
-                    break
-                if ch != b'\n':
-                    word.append(ch)
-            if word.decode('utf-8') in vocab:
-                count += 1
-                word_vecs[word] = np.fromstring(f.read(binary_len), dtype='float32')
-            else:
-                f.read(binary_len)
-        print("done")
-        print("Words found in wor2vec embeddings", count)
-        return word_vecs, count, vec_dim
-
 
 def cache_word_embeddings(word_embeddings_file, cache_file):
     if not word_embeddings_file.endswith('.gz'):
@@ -193,7 +161,7 @@ def read_in_dataset(dataset_folder, set_folder, stop_punct=False, dash_split=Fal
         for term in sentence.split():
             vocab_set.add(term)
     vocab = list(vocab_set)
-    
+
     return [questions, sentences, labels, max(len_q_list), max(len_s_list), vocab]
 
 
@@ -206,17 +174,13 @@ def get_test_qids_labels(dataset_folder, set_folder):
 
 if __name__ == "__main__":
 
-    vocab = ["unk", "idontreallythinkthiswordexists", "hello"]
+    # vocab = ["unk", "idontreallythinkthiswordexists", "hello"]
+
+    vocab, vec = load_word_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.cache")
 
     # w2v_dict = {}
     # load_cached_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.cache", vocab, w2v_dict)
-    
-    w2v_dict = word2vec_load_bin_vec("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.bin", vocab)
-    for w, v in w2v_dict.items():
-        print(w, v)
 
-    # vocab, emb = load_word_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.bin")
-    # print(len(vocab))
-    # print(emb[vocab['apple']])
-
-    
+    # for w, v in w2v_dict.iteritems():
+    #     print(w)
+    #     print(v)
