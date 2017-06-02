@@ -5,8 +5,7 @@ import sys
 
 import numpy as np
 import torch
-
-import torchwordemb
+from gensim.models.keyedvectors import KeyedVectors
 
 # logging setup
 import logging
@@ -25,11 +24,6 @@ def logargs(func):
         return func(*args, **kwargs)
     return inner
 
-def load_word_embeddings(word_embeddings_file):
-    vocab, emb = torchwordemb.load_word2vec_bin(word_embeddings_file)
-    print(vocab.size())
-    print(emb[vocab['apple']])
-    return vocab, emb
 
 def cache_word_embeddings(word_embeddings_file, cache_file):
     if not word_embeddings_file.endswith('.gz'):
@@ -161,7 +155,7 @@ def read_in_dataset(dataset_folder, set_folder, stop_punct=False, dash_split=Fal
         for term in sentence.split():
             vocab_set.add(term)
     vocab = list(vocab_set)
-
+    
     return [questions, sentences, labels, max(len_q_list), max(len_s_list), vocab]
 
 
@@ -174,13 +168,11 @@ def get_test_qids_labels(dataset_folder, set_folder):
 
 if __name__ == "__main__":
 
-    # vocab = ["unk", "idontreallythinkthiswordexists", "hello"]
+    vocab = ["unk", "idontreallythinkthiswordexists", "hello"]
 
-    vocab, vec = load_word_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.cache")
+    w2v_dict = {}
+    load_cached_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.cache", vocab, w2v_dict)
 
-    # w2v_dict = {}
-    # load_cached_embeddings("../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.cache", vocab, w2v_dict)
-
-    # for w, v in w2v_dict.iteritems():
-    #     print(w)
-    #     print(v)
+    for w, v in w2v_dict.iteritems():
+        print(w)
+        print(v)
