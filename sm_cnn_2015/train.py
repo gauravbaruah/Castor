@@ -1,5 +1,6 @@
 import time
 
+from collections import defaultdict
 import numpy as np
 import torch
 import torch.nn as nn
@@ -7,56 +8,65 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 import utils
-
-# logging setup
-import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
-
+from model import QAModel
 
 class Trainer(object):
 
-    def __init__(self, model, eta, mom, no_loss_reg, vec_dim):
-        # set the random seeds for every instance of trainer.
+    def __init__(self, dataset_folder, train_set, dev_set, test_set,    # input data
+                 word_vectors_file,                                     # word embeddings
+                 eta, mom,                                              # optimization params
+                 filter_width, num_conv_filters,                        # model params
+                 load_model_file=None):                                 # load model file
+                
+        # reset the random seeds for every instance of trainer.
         # needed to ensure reproduction of random word vectors for out of vocab terms
         torch.manual_seed(1234)
         np.random.seed(1234)
-        self.unk_term = np.random.uniform(-0.25, 0.25, vec_dim)
 
-        self.reg = 1e-5
-        self.no_loss_reg = no_loss_reg
-        self.model = model
-        self.criterion = nn.CrossEntropyLoss()
-        #self.criterion = nn.NLLLoss()
-        self.optimizer = optim.SGD(self.model.parameters(), lr=eta, momentum=mom, \
-            weight_decay=(0 if no_loss_reg else self.reg))
-
+        # setup data splits and load embeddings
         self.data_splits = {}
-        self.embeddings = {}
-        self.vec_dim = vec_dim
-
-
-    def load_input_data(self, dataset_root_folder, word_vectors_cache_file, \
-            train_set_folder, dev_set_folder, test_set_folder, load_ext_feats=True):
-        for set_folder in [test_set_folder, dev_set_folder, train_set_folder]:
+        self.embeddings = None
+        
+        # read in data splits
+        vocabulary = set()
+        for set_folder in [test_set, dev_set, train_set]:
             if set_folder:
                 questions, sentences, labels, maxlen_q, maxlen_s, vocab = \
-                    utils.read_in_dataset(dataset_root_folder, set_folder)
+                    utils.read_in_dataset(dataset_folder, set_folder)
+
+                vocabulary = vocabulary.union(set(vocab))
 
                 self.data_splits[set_folder] = [questions, sentences, labels, maxlen_q, maxlen_s]
-
                 default_ext_feats = [np.zeros(4)] * len(self.data_splits[set_folder][0])
                 self.data_splits[set_folder].append(default_ext_feats)
 
-                utils.load_cached_embeddings(word_vectors_cache_file, vocab, self.embeddings,
-                                             [] if "train" in set_folder else self.unk_term)
-        
+        # load word vectors
+        w2v, num_words, self.vec_dim = \
+            utils.word2vec_load_bin_vec(word_vectors_file, list(vocabulary))
+        w2v["random.unknown"] = np.random.uniform(-0.25, 0.25, self.vec_dim)
+        self.w2i = defaultdict(int) # word to index for embedding object
+        all_embeddings = []
+        for index, word_embedding in enumerate(w2v.items()):
+            word, embedding = word_embedding
+            self.w2i[word] = index
+            all_embeddings.append(embedding)
+        embeddings_matrix = np.vstack(all_embeddings)
+        print(embeddings_matrix.shape)
+        self.embeddings = nn.Embedding(num_words +1, self.vec_dim)
+        self.embeddings.weight.data.copy_(torch.from_numpy(embeddings_matrix))
+
+        # create model
+        if load_model_file:
+            self.model = QAModel.load(load_model_file)
+        else:
+            self.model = QAModel(self.vec_dim, filter_width, num_conv_filters)
+
+        # optimization parameters
+        self.reg = 1e-5
+        self.criterion = nn.CrossEntropyLoss()
+        self.optimizer = optim.SGD(self.model.parameters(), lr=eta, momentum=mom, \
+            weight_decay=(0 if no_loss_reg else self.reg))
+
 
     def regularize_loss(self, loss):
 
@@ -217,6 +227,17 @@ class Trainer(object):
         terms = sentence.strip().split()[:60]
         # NOTE: we are truncating the inputs to 60 words.
 
+        # test = ["unk", "idontreallythinkthiswordexists", "hello"]
+        # for t in test:
+        #     if t in self.w2i:
+        #         print(t, self.w2i[t])
+        #     else:
+        #         print(t, self.w2i["random.unknown"])
+        # indices = [i for i in map(lambda t: self.w2i[t if t in self.w2i else "random.unknown"], test)]
+        # veci = Variable(torch.LongTensor(indices))
+        # print(veci)
+        # print(self.embeddings(veci))
+
         word_embeddings = torch.zeros(len(terms), vec_dim).type(torch.DoubleTensor)
         for i in range(len(terms)):
             word = terms[i]
@@ -251,3 +272,5 @@ class Trainer(object):
             tensorized_inputs.append((xq, xs, ext_feats))
 
         return tensorized_inputs, Variable(y)
+
+
