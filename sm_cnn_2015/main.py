@@ -76,48 +76,57 @@ def compute_map_mrr(dataset_folder, set_folder, test_scores, run_name_prefix=Non
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description='pytorch port of the SM model', \
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    ap.add_argument('model_outfile', help='file to save final model')
-    ap.add_argument('--word_vectors_file', \
+    ap.add_argument('model-outfile', \
+        help='file to save final model')
+    ap.add_argument('--word-vectors-file', \
         help='NOTE: a cache will be created for faster loading for word vectors',\
         default="../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.bin")
-    ap.add_argument('--dataset_folder', help='directory containing train, dev, test sets', \
+    ap.add_argument('--dataset-folder', \
+        help='directory containing train, dev, test sets', \
         default="../../data/TrecQA")
-    ap.add_argument('--classes', type=int, default=2)
+
     # external features related arguments
-    ap.add_argument('--no-ext-feats', action="store_true", \
-        help="will not include external features in the model")
-    ap.add_argument('--paper-ext-feats', action="store_true", default=True, \
-        help="external features as per the paper")
-    ap.add_argument('--paper-ext-feats-stem', action="store_true", \
-        help="external features as per the paper")
+    ap.add_argument('--paper-ext-feats', action="store_true", \
+        help="external features as per the paper", \
+        default=True)
     # system arguments
     # TODO: add arguments for CUDA
-    ap.add_argument('--num_threads', help="the number of simultaneous processes to run", \
-        type=int, default=4)
+    ap.add_argument('--num-threads', type=int, \
+        help="the number of simultaneous processes to run", \
+        default=4)
     # training arguments
-    ap.add_argument('--batch_size', type=int, default=1, help="training mini-batch size")
-    ap.add_argument('--filter_width', type=int, default=5, help="number of convolution channels")
-    ap.add_argument('--eta', help='Initial learning rate', default=0.001, type=float)
-    ap.add_argument('--mom', help='SGD Momentum', default=0.0, type=float)
+    ap.add_argument('--batch-size', type=int, \
+        default=1, \
+        help="training mini-batch size")
+    ap.add_argument('--filter-width', type=int, \
+        default=5, \
+        help="number of convolution channels")
+    ap.add_argument('--eta', \
+        help='Initial learning rate', \
+        default=0.001, type=float)
+    ap.add_argument('--mom', \
+        help='SGD Momentum', \
+        default=0.0, type=float)
     ap.add_argument('--train', help='switches to train set', action="store_true")
     # epoch related arguments
-    ap.add_argument('--epochs', type=int, default=25, help="number of training epochs")
-    ap.add_argument('--patience', type=int, default=5, \
+    ap.add_argument('--epochs', \
+        help="number of training epochs", \
+        default=25, type=int)
+    ap.add_argument('--patience', type=int, \
+        default=5, \
         help="if there is no appreciable change in model after <patience> epochs, then stop")
     # debugging arguments
-    ap.add_argument('--debug_single_batch', action="store_true", \
-        help="will stop program after training 1 input batch")
-    ap.add_argument('--num_conv_filters', default=100, type=int, \
+    ap.add_argument('--num-conv-filters', \
+        default=100, type=int, \
         help="the number of convolution channels (lesser is faster)")
-    ap.add_argument('--no_loss_reg', help="no loss regularization", action="store_true")
-    ap.add_argument('--test_on_each_epoch', action="store_true", \
+    ap.add_argument('--test-on-each-epoch', action="store_true", \
         help='runs test on each epoch to track final performance')
-    ap.add_argument("--skip-training", help="will load pre-trained model", action="store_true")
-    ap.add_argument("--run-name-prefix", help="will output train|dev|test runs with provided prefix")
-    ap.add_argument("--stop-punct", help='removes punctuation', action="store_true")
-    ap.add_argument("--dash-split", help="split words containing hyphens", action="store_true")
-    ap.add_argument("--index-for-corpusIDF", help="fetches idf from Index. provide index path. will\
-    generate a vocabFile")
+    ap.add_argument("--skip-training", action="store_true", \
+        help="will load pre-trained model")
+    ap.add_argument("--run-name-prefix", \
+        help="will output train|dev|test runs with provided prefix")
+    ap.add_argument("--index-for-corpusIDF", \
+        help="fetches idf from Index. provide index path. will generate a vocabFile")
 
     args = ap.parse_args()
 
@@ -126,23 +135,18 @@ if __name__ == "__main__":
     torch.set_num_threads(args.num_threads)
 
     train_set, dev_set, test_set = 'train-all', 'raw-dev', 'raw-test'
-    if args.train:
-        train_set, dev_set, test_set = 'train', 'clean-dev', 'clean-test'
-
-    # cache word embeddings
-    cache_file = os.path.splitext(args.word_vectors_file)[0] + '.cache'
-    utils.cache_word_embeddings(args.word_vectors_file, cache_file)
-
-    vocab_size, vec_dim = utils.load_embedding_dimensions(cache_file)
-
-    # instantiate model
-    net = QAModel(vec_dim, args.filter_width, args.num_conv_filters, args.no_ext_feats)
 
     # initialize the trainer
-    trainer = Trainer(net, args.eta, args.mom, args.no_loss_reg, vec_dim)
-    logger.info("Loading input data...")
+    trainer = Trainer(args.dataset_folder, train_set, dev_set, test_set, # input data
+                      args.word_vectors_file,                            # word embeddings
+                      args.eta, args.mom,                                # optimization params
+                      args.filter_width, args.num_conv_filters           # model params
+                      )
+
+    sys.exit()
+
     # load input data
-    trainer.load_input_data(args.dataset_folder, cache_file, train_set, dev_set, test_set)
+    trainer.load_input_data()
     logger.info("Setting up external features...")
     # setup external features
     # TODO: remember to update args.* in testing loop below
@@ -151,12 +155,7 @@ if __name__ == "__main__":
         ext_feats_for_splits = \
             set_external_features_as_per_paper(trainer, args.index_for_corpusIDF)
         # ^^ we are saving the features to be used while testing at the end of training
-    elif args.paper_ext_feats_stem:
-        logger.info("--paper-ext-feats-stem")
-        ext_feats_for_splits = \
-            set_external_features_as_per_paper_and_stem(trainer, args.index_for_corpusIDF)
 
-    
     if not args.skip_training:
         best_map = 0.0
         best_model = 0
@@ -190,9 +189,10 @@ if __name__ == "__main__":
 
         logger.info(' ------------ Training epochs completed! ------------')
         logger.info('Best dev MAP in training phase = {:.4f}'.format(best_map))
-
-    trained_model = QAModel.load(args.model_outfile)
-    evaluator = Trainer(trained_model, args.eta, args.mom, args.no_loss_reg, vec_dim)
+    
+    evaluator = Trainer(args.eta, args.mom,
+                      args.dataset_folder, train_set, dev_set, test_set,
+                      args.filter_width, args.num_conv_filters, args.model_outfile)
 
     for split in [test_set, dev_set]:
         evaluator.load_input_data(args.dataset_folder, cache_file, None, None, split)
