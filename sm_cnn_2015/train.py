@@ -54,6 +54,7 @@ class Trainer(object):
         print(embeddings_matrix.shape)
         self.embeddings = nn.Embedding(num_words +1, self.vec_dim)
         self.embeddings.weight.data.copy_(torch.from_numpy(embeddings_matrix))
+        self.embeddings.requires_grad = False
 
         # create model
         if load_model_file:
@@ -65,7 +66,7 @@ class Trainer(object):
         self.reg = 1e-5
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = optim.SGD(self.model.parameters(), lr=eta, momentum=mom, \
-            weight_decay=(0 if no_loss_reg else self.reg))
+            weight_decay=self.reg)
 
 
     def regularize_loss(self, loss):
@@ -94,8 +95,12 @@ class Trainer(object):
         # logger.debug('loss after criterion {}'.format(loss))
 
         # NOTE: regularizing location 1
-        if not self.no_loss_reg:
-            loss = self.regularize_loss(loss)
+        flattened_params = []
+        for p in self.model.parameters():
+            f = p.data.clone()
+            flattened_params.append(f.view(-1))
+        fp = torch.cat(flattened_params)
+        loss.add_(0.5 * self.reg * fp.norm() * fp.norm())
         #     logger.debug('loss after regularizing {}'.format(loss))
 
         loss.backward()
@@ -125,7 +130,7 @@ class Trainer(object):
 
 
     def test(self, set_folder, batch_size):
-        logger.info('----- Predictions on {} '.format(set_folder))
+        print('----- Predictions on {} '.format(set_folder))
 
         questions, sentences, labels, maxlen_q, maxlen_s, ext_feats = \
             self.data_splits[set_folder]
@@ -149,8 +154,7 @@ class Trainer(object):
                 questions[batch_start:batch_end],
                 sentences[batch_start:batch_end],
                 labels[batch_start:batch_end],
-                ext_feats[batch_start:batch_end],
-                word_vectors, vec_dim
+                ext_feats[batch_start:batch_end]
                 )
 
             xq, xa, x_ext_feats = batch_inputs[0]
@@ -166,21 +170,20 @@ class Trainer(object):
             # ^ we want to score for relevance, NOT the predicted class
             ypc += 1
 
-        # logger.info('{}_correct {}'.format(set_folder, total_correct))
-        # logger.info('{}_loss {}'.format(set_folder, total_loss.data[0]))
-        logger.info('{} total {}'.format(set_folder, len(labels)))
-        # logger.info('{}_loss = {:.4f}, acc = {:.4f}'.format(set_folder, total_loss.data[0]/len(labels), float(total_correct)/len(labels))
-        #logger.info('{}_loss = {:.4f}'.format(set_folder, total_loss.data[0]/len(labels)))
+        # print('{}_correct {}'.format(set_folder, total_correct))
+        # print('{}_loss {}'.format(set_folder, total_loss.data[0]))
+        print('{} total {}'.format(set_folder, len(labels)))
+        # print('{}_loss = {:.4f}, acc = {:.4f}'.format(set_folder, total_loss.data[0]/len(labels), float(total_correct)/len(labels))
+        #print('{}_loss = {:.4f}'.format(set_folder, total_loss.data[0]/len(labels)))
 
         return y_pred
 
 
-    def train(self, set_folder, batch_size, debug_single_batch):
+    def train(self, set_folder, batch_size):
         train_start_time = time.time()
 
         questions, sentences, labels, maxlen_q, maxlen_s, ext_feats = \
             self.data_splits[set_folder]
-        word_vectors, vec_dim = self.embeddings, self.vec_dim
 
         # set model for training modep
         self.model.train()
@@ -197,8 +200,7 @@ class Trainer(object):
                 questions[batch_start:batch_end],
                 sentences[batch_start:batch_end],
                 labels[batch_start:batch_end],
-                ext_feats[batch_start:batch_end],
-                word_vectors, vec_dim
+                ext_feats[batch_start:batch_end]
                 )
 
             xq, xa, x_ext_feats = batch_inputs[0]
@@ -209,48 +211,41 @@ class Trainer(object):
 
             # logger.debug('batch_loss {}, batch_correct {}'.format(batch_loss, batch_correct))
             train_loss += batch_loss
-            # train_correct += batch_correct
-            if debug_single_batch: 
-                break
+            train_correct += batch_correct
 
-        # logger.info('train_correct {}'.format(train_correct))
-        logger.info('train_loss {}'.format(train_loss))
-        logger.info('total training batches = {}'.format(num_batches))
-        logger.info('train_loss = {:.4f}'.format(
+
+        print('train_correct {}'.format(train_correct))
+        print('train_loss {}'.format(train_loss))
+        print('total training batches = {}'.format(num_batches))
+        print('train_loss = {:.4f}'.format(
             train_loss/num_batches
         ))
-        logger.info('training time = {:.3f} seconds'.format(time.time() - train_start_time))
+        print('training time = {:.3f} seconds'.format(time.time() - train_start_time))
         return train_correct/num_batches
 
 
-    def make_input_matrix(self, sentence, word_vectors, vec_dim):
+    def make_input_matrix(self, sentence):
         terms = sentence.strip().split()[:60]
         # NOTE: we are truncating the inputs to 60 words.
 
-        # test = ["unk", "idontreallythinkthiswordexists", "hello"]
-        # for t in test:
-        #     if t in self.w2i:
-        #         print(t, self.w2i[t])
-        #     else:
-        #         print(t, self.w2i["random.unknown"])
-        # indices = [i for i in map(lambda t: self.w2i[t if t in self.w2i else "random.unknown"], test)]
-        # veci = Variable(torch.LongTensor(indices))
-        # print(veci)
-        # print(self.embeddings(veci))
+        indices = Variable(torch.LongTensor(
+            [i for i in map(lambda t: self.w2i[t if t in self.w2i else "random.unknown"], terms)]
+        ))
+        embeddings_matrix = self.embeddings(indices)
+        
+        # word_embeddings = torch.zeros(len(terms), vec_dim).type(torch.DoubleTensor)
+        # for i in range(len(terms)):
+        #     word = terms[i]
+        #     emb = torch.from_numpy(word_vectors[word])
+        #     word_embeddings[i] = emb
 
-        word_embeddings = torch.zeros(len(terms), vec_dim).type(torch.DoubleTensor)
-        for i in range(len(terms)):
-            word = terms[i]
-            emb = torch.from_numpy(word_vectors[word])
-            word_embeddings[i] = emb
-
-        input_tensor = torch.zeros(1, vec_dim, len(terms))
-        input_tensor[0] = torch.transpose(word_embeddings, 0, 1)
+        input_tensor = Variable(torch.zeros(1, self.embeddings.embedding_dim, len(terms)))
+        input_tensor[0] = torch.transpose(embeddings_matrix, 0, 1)
+        
         return input_tensor
 
 
-    def get_tensorized_inputs(self, batch_ques, batch_sents, batch_labels, batch_ext_feats, \
-            word_vectors, vec_dim):
+    def get_tensorized_inputs(self, batch_ques, batch_sents, batch_labels, batch_ext_feats):
         batch_size = len(batch_ques)
         # NOTE: ideal batch size is one, because sentences are all of different length.
         # In other words, we have no option but to feed in sentences one by one into the model
@@ -264,8 +259,10 @@ class Trainer(object):
 
         tensorized_inputs = []
         for i in range(len(batch_ques)):
-            xq = Variable(self.make_input_matrix(batch_ques[i], word_vectors, vec_dim))
-            xs = Variable(self.make_input_matrix(batch_sents[i], word_vectors, vec_dim))
+            # xq = Variable(self.make_input_matrix(batch_ques[i], word_vectors, vec_dim))
+            # xs = Variable(self.make_input_matrix(batch_sents[i], word_vectors, vec_dim))
+            xq = self.make_input_matrix(batch_ques[i])
+            xs = self.make_input_matrix(batch_sents[i])
             ext_feats = Variable(torch.FloatTensor(batch_ext_feats[i]))
             ext_feats = torch.unsqueeze(ext_feats, 0)
             y[i] = batch_labels[i]

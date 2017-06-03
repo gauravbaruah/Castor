@@ -141,12 +141,9 @@ if __name__ == "__main__":
                       args.word_vectors_file,                            # word embeddings
                       args.eta, args.mom,                                # optimization params
                       args.filter_width, args.num_conv_filters           # model params
-                      )
+                     )
 
-    sys.exit()
-
-    # load input data
-    trainer.load_input_data()
+    # load input data    
     logger.info("Setting up external features...")
     # setup external features
     # TODO: remember to update args.* in testing loop below
@@ -162,11 +159,10 @@ if __name__ == "__main__":
 
         for i in range(args.epochs):
             logger.info('------------- Training epoch {} --------------'.format(i+1))
-            train_accuracy = trainer.train(train_set, args.batch_size, args.debug_single_batch)
-            if args.debug_single_batch: sys.exit(0)
-
+            train_accuracy = trainer.train(train_set, args.batch_size)
+            sys.exit()
             dev_scores = trainer.test(dev_set, args.batch_size)
-
+            
             dev_map, dev_mrr = compute_map_mrr(args.dataset_folder, dev_set, dev_scores)
             logger.info("------- MAP {}, MRR {}".format(dev_map, dev_mrr))
 
