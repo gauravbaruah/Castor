@@ -154,11 +154,11 @@ def set_external_features_as_per_paper(trainer, corpus_index=None):
             trainer.data_splits[split]
 
         overlap = compute_overlap(questions, answers)
-        idf_weighted_overlap = compute_idf_weighted_overlap(questions, answers, idf_weights)
+        idf_weighted_overlap = 0.0 # compute_idf_weighted_overlap(questions, answers, idf_weights)
         overlap_no_stopwords =\
             compute_overlap(stopped(questions), stopped(answers))
-        idf_weighted_overlap_no_stopwords =\
-            compute_idf_weighted_overlap(stopped(questions), stopped(answers), idf_weights)
+        idf_weighted_overlap_no_stopwords = 0.0 #\
+            # compute_idf_weighted_overlap(stopped(questions), stopped(answers), idf_weights)
         ext_feats = [np.array(feats) for feats in zip(overlap, idf_weighted_overlap,\
                     overlap_no_stopwords, idf_weighted_overlap_no_stopwords)]
         trainer.data_splits[split][-1] = ext_feats
