@@ -49,7 +49,12 @@ def get_qadata_only_idf(all_data):
             term_idfs[term] += 1.0
     N = len(all_data)
     for term, n_t in term_idfs.items():
-        term_idfs[term] = np.log(N/(1+n_t))
+        # term_idfs[term] = np.log(N/(1+n_t))
+
+        # bug experiments
+        term_idfs[term] = 0.0
+        # term_idfs[term] /= np.log(N/(n_t))
+
     return term_idfs
 
 def get_source_corpus_idf(all_data, path_to_index):
@@ -129,6 +134,7 @@ def set_external_features_as_per_paper(trainer, corpus_index=None):
     """
     computes external features as per the paper AND saves them into trainer
     """
+    print('set_external_features_as_per_paper')
     all_questions, all_answers = [], []
     for split in trainer.data_splits.keys():
         questions, answers, labels, max_q_len, max_a_len, default_ext_feats = \
@@ -147,18 +153,24 @@ def set_external_features_as_per_paper(trainer, corpus_index=None):
     # 1. overlap(q, a),
     # 2. idf_overlap(q, a),
     # 3. overlap(stopped(q), stopped(a)),
-    # 4. idf_over(stopped(q), stopped(a))
+    # 4. idf_overlap(stopped(q), stopped(a))
 
     for split in trainer.data_splits.keys():
         questions, answers, labels, max_q_len, max_a_len, default_ext_feats = \
             trainer.data_splits[split]
 
         overlap = compute_overlap(questions, answers)
-        idf_weighted_overlap = 0.0 # compute_idf_weighted_overlap(questions, answers, idf_weights)
+        idf_weighted_overlap = compute_idf_weighted_overlap(questions, answers, idf_weights)
+        # bug experiments
+        # idf_weighted_overlap = np.zeros(idf_weighted_overlap.size)
+
         overlap_no_stopwords =\
             compute_overlap(stopped(questions), stopped(answers))
-        idf_weighted_overlap_no_stopwords = 0.0 #\
-            # compute_idf_weighted_overlap(stopped(questions), stopped(answers), idf_weights)
+        idf_weighted_overlap_no_stopwords = \
+            compute_idf_weighted_overlap(stopped(questions), stopped(answers), idf_weights)
+        # bug experiments
+        # idf_weighted_overlap_no_stopwords = np.zeros(idf_weighted_overlap_no_stopwords.size)
+
         ext_feats = [np.array(feats) for feats in zip(overlap, idf_weighted_overlap,\
                     overlap_no_stopwords, idf_weighted_overlap_no_stopwords)]
         trainer.data_splits[split][-1] = ext_feats
