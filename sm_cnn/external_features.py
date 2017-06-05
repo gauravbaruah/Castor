@@ -11,6 +11,7 @@ import string
 from collections import defaultdict
 
 import numpy as np
+from sklearn.preprocessing import StandardScaler
 
 import nltk
 nltk.download('stopwords', quiet=True)
@@ -49,10 +50,10 @@ def get_qadata_only_idf(all_data):
             term_idfs[term] += 1.0
     N = len(all_data)
     for term, n_t in term_idfs.items():
-        # term_idfs[term] = np.log(N/(1+n_t))
+        term_idfs[term] = np.log(N/(1+n_t))
 
         # bug experiments
-        term_idfs[term] = 0.0
+        # term_idfs[term] = 0.0
         # term_idfs[term] /= np.log(N/(n_t))
 
     return term_idfs
@@ -158,7 +159,7 @@ def set_external_features_as_per_paper(trainer, corpus_index=None):
     for split in trainer.data_splits.keys():
         questions, answers, labels, max_q_len, max_a_len, default_ext_feats = \
             trainer.data_splits[split]
-
+        print(split)
         overlap = compute_overlap(questions, answers)
         idf_weighted_overlap = compute_idf_weighted_overlap(questions, answers, idf_weights)
         # bug experiments
@@ -172,9 +173,24 @@ def set_external_features_as_per_paper(trainer, corpus_index=None):
         # idf_weighted_overlap_no_stopwords = np.zeros(idf_weighted_overlap_no_stopwords.size)
 
         ext_feats = [np.array(feats) for feats in zip(overlap, idf_weighted_overlap,\
-                    overlap_no_stopwords, idf_weighted_overlap_no_stopwords)]
+                   overlap_no_stopwords, idf_weighted_overlap_no_stopwords)]
+
+        # bug experiments: reading features in from file
+        ext_feats = [np.array([float(f) for f in line.strip().split()]) \
+                     for line in \
+                    open(os.path.join("../../data/TrecQA/bug-experiments/bug-feats-fixed/{}.overlap_feats.txt".format(split)))]
+
+        # bug experiments: normalizing code
+        scaler = StandardScaler()
+        ext_feats = scaler.fit_transform(ext_feats)
+
+        with open("{}.overlap_feats.txt".format(split), 'w') as eff:
+            for ef in ext_feats:
+                print(' '.join([str(f) for f in ef]), file=eff)
+
         trainer.data_splits[split][-1] = ext_feats
         external_features[split] = ext_feats
+    sys.exit()
     return external_features
 
 
