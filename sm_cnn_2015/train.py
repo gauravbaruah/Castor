@@ -7,6 +7,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 
+from tqdm import tqdm
+
 import utils
 from model import QAModel
 
@@ -191,7 +193,7 @@ class Trainer(object):
         train_loss, train_correct = 0., 0.
         num_batches = np.ceil(len(questions)/float(batch_size))
 
-        for k in range(int(num_batches)):
+        for k in tqdm(range(int(num_batches))):
             batch_start = k * batch_size
             batch_end = (k+1) * batch_size
 
