@@ -160,37 +160,36 @@ def set_external_features_as_per_paper(trainer, corpus_index=None):
         questions, answers, labels, max_q_len, max_a_len, default_ext_feats = \
             trainer.data_splits[split]
         print(split)
-        overlap = compute_overlap(questions, answers)
-        idf_weighted_overlap = compute_idf_weighted_overlap(questions, answers, idf_weights)
-        # bug experiments
-        # idf_weighted_overlap = np.zeros(idf_weighted_overlap.size)
+        # overlap = compute_overlap(questions, answers)
+        # idf_weighted_overlap = compute_idf_weighted_overlap(questions, answers, idf_weights)
+        # # bug experiments
+        # # idf_weighted_overlap = np.zeros(idf_weighted_overlap.size)
 
-        overlap_no_stopwords =\
-            compute_overlap(stopped(questions), stopped(answers))
-        idf_weighted_overlap_no_stopwords = \
-            compute_idf_weighted_overlap(stopped(questions), stopped(answers), idf_weights)
-        # bug experiments
-        # idf_weighted_overlap_no_stopwords = np.zeros(idf_weighted_overlap_no_stopwords.size)
+        # overlap_no_stopwords =\
+        #     compute_overlap(stopped(questions), stopped(answers))
+        # idf_weighted_overlap_no_stopwords = \
+        #     compute_idf_weighted_overlap(stopped(questions), stopped(answers), idf_weights)
+        # # bug experiments
+        # # idf_weighted_overlap_no_stopwords = np.zeros(idf_weighted_overlap_no_stopwords.size)
 
-        ext_feats = [np.array(feats) for feats in zip(overlap, idf_weighted_overlap,\
-                   overlap_no_stopwords, idf_weighted_overlap_no_stopwords)]
+        # ext_feats = [np.array(feats) for feats in zip(overlap, idf_weighted_overlap,\
+        #            overlap_no_stopwords, idf_weighted_overlap_no_stopwords)]
+        # with open("{}.overlap_feats.txt".format(split), 'w') as eff:
+        #     for ef in ext_feats:
+        #         print(' '.join([str(f) for f in ef]), file=eff)
 
         # bug experiments: reading features in from file
         ext_feats = [np.array([float(f) for f in line.strip().split()]) \
                      for line in \
-                    open(os.path.join("../../data/TrecQA/bug-experiments/bug-feats-fixed/{}.overlap_feats.txt".format(split)))]
+                    open(os.path.join("../../data/TrecQA/bug-experiments/bug-feats-random/{}.overlap_feats.txt".format(split)))]
 
         # bug experiments: normalizing code
         scaler = StandardScaler()
         ext_feats = scaler.fit_transform(ext_feats)
 
-        with open("{}.overlap_feats.txt".format(split), 'w') as eff:
-            for ef in ext_feats:
-                print(' '.join([str(f) for f in ef]), file=eff)
 
         trainer.data_splits[split][-1] = ext_feats
         external_features[split] = ext_feats
-    sys.exit()
     return external_features
 
 
