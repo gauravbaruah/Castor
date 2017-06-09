@@ -76,5 +76,10 @@ The final model will be saved to ```../../models/sm_model/sm_model.TrecQA.TRAIN-
 _NOTE:_ On first run, the program will create a memory-mapped cache for word e  mbeddings (943MB) in ``data/word2vec``.
 The cache allows for faster loading of data in future runs.
 
-Run ```python main.py -h``` for more default options.
+Note that ``main.py`` has many default options tuned for training on the TrecQA dataset. Run ```python main.py -h``` to see default options.
 
+
+To train the SM model on WikiQA data
+```
+python main.py 
+```

@@ -8,6 +8,7 @@ import sys
 import numpy as np
 import pandas as pd
 import torch
+from collections import Counter
 
 import utils
 from external_features import stopped, stemmed, compute_idf_weighted_overlap, compute_overlap,\
@@ -39,13 +40,18 @@ def compute_map_mrr(dataset_folder, set_folder, test_scores, run_name_prefix=Non
     N = len(test_scores)
 
     qids_test, y_test = utils.get_test_qids_labels(dataset_folder, set_folder)
-
+    
+    docno_range = np.arange(N)
+    if 'WikiQA' in dataset_folder:
+        qid_counts = Counter(qids_test)
+        docno_range = np.hstack([np.arange(count) for qid, count in qid_counts])
+    
     # Call TrecEval code to calc MAP and MRR
     df_submission = pd.DataFrame(index=np.arange(N), \
         columns=['qid', 'iter', 'docno', 'rank', 'sim', 'run_id'])
     df_submission['qid'] = qids_test
     df_submission['iter'] = 0
-    df_submission['docno'] = np.arange(N)
+    df_submission['docno'] = docno_range
     df_submission['rank'] = 0
     df_submission['sim'] = test_scores
     df_submission['run_id'] = 'smmodel'
@@ -58,7 +64,7 @@ def compute_map_mrr(dataset_folder, set_folder, test_scores, run_name_prefix=Non
     df_gold = pd.DataFrame(index=np.arange(N), columns=['qid', 'iter', 'docno', 'rel'])
     df_gold['qid'] = qids_test
     df_gold['iter'] = 0
-    df_gold['docno'] = np.arange(N)
+    df_gold['docno'] = docno_range
     df_gold['rel'] = y_test
     df_gold.to_csv(os.path.join(args.dataset_folder, 'gold.txt'), header=False, index=False, sep=' ')
 
@@ -81,14 +87,13 @@ if __name__ == "__main__":
         help='NOTE: a cache will be created for faster loading for word vectors',\
         default="../../data/word2vec/aquaint+wiki.txt.gz.ndim=50.bin")
     ap.add_argument('--dataset_folder', help='directory containing train, dev, test sets', \
+        choices=["../../data/TrecQA", "../../data/WikiQA"], 
         default="../../data/TrecQA")
     ap.add_argument('--classes', type=int, default=2)
     # external features related arguments
     ap.add_argument('--no-ext-feats', action="store_true", \
         help="will not include external features in the model")
-    ap.add_argument('--paper-ext-feats', action="store_true", default=True, \
-        help="external features as per the paper")
-    ap.add_argument('--paper-ext-feats-stem', action="store_true", \
+    ap.add_argument('--paper-ext-feats', action="store_true", \
         help="external features as per the paper")
     # system arguments
     ap.add_argument('--cuda', action='store_true', help='use CUDA if available')
@@ -99,7 +104,6 @@ if __name__ == "__main__":
     ap.add_argument('--filter_width', type=int, default=5, help="number of convolution channels")
     ap.add_argument('--eta', help='Initial learning rate', default=0.001, type=float)
     ap.add_argument('--mom', help='SGD Momentum', default=0.0, type=float)
-    ap.add_argument('--train', help='switches to train set', action="store_true")
     # epoch related arguments
     ap.add_argument('--epochs', type=int, default=25, help="number of training epochs")
     ap.add_argument('--patience', type=int, default=5, \
@@ -126,8 +130,8 @@ if __name__ == "__main__":
     torch.set_num_threads(args.num_threads)
 
     train_set, dev_set, test_set = 'train-all', 'raw-dev', 'raw-test'
-    if args.train:
-        train_set, dev_set, test_set = 'train', 'clean-dev', 'clean-test'
+    if 'WikiQA' in args.dataset_folder:
+        train_set, dev_set, test_set = 'train', 'dev', 'test'
 
     # cache word embeddings
     cache_file = os.path.splitext(args.word_vectors_file)[0] + '.cache'
@@ -151,11 +155,6 @@ if __name__ == "__main__":
         ext_feats_for_splits = \
             set_external_features_as_per_paper(trainer, args.index_for_corpusIDF)
         # ^^ we are saving the features to be used while testing at the end of training
-    elif args.paper_ext_feats_stem:
-        logger.info("--paper-ext-feats-stem")
-        ext_feats_for_splits = \
-            set_external_features_as_per_paper_and_stem(trainer, args.index_for_corpusIDF)
-
 
     if not args.skip_training:
         best_map = 0.0
