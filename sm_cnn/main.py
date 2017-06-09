@@ -12,7 +12,8 @@ import torch
 import utils
 from external_features import stopped, stemmed, compute_idf_weighted_overlap, compute_overlap,\
     get_qadata_only_idf, set_external_features_as_per_paper,\
-    set_external_features_as_per_paper_and_stem
+    set_external_features_as_per_paper_and_stem, \
+    load_external_features_from_files
 from train import Trainer
 from model import QAModel
 
@@ -118,6 +119,10 @@ if __name__ == "__main__":
     ap.add_argument("--dash-split", help="split words containing hyphens", action="store_true")
     ap.add_argument("--index-for-corpusIDF", help="fetches idf from Index. provide index path. will\
     generate a vocabFile")
+    # the bug picture experiments
+    ap.add_argument("--norm", help="normalize features", action="store_true")
+    ap.add_argument("--features-path-prefix", help="folder containing precomputed {train-all|raw-dev|raw-test}.overlap_feats.txt files. Features will be loaded")
+    ap.add_argument("--num-ext-feats", type=int, help="number of external features", default=4)
 
     args = ap.parse_args()
 
@@ -136,25 +141,32 @@ if __name__ == "__main__":
     vocab_size, vec_dim = utils.load_embedding_dimensions(cache_file)
 
     # instantiate model
-    net = QAModel(vec_dim, args.filter_width, args.num_conv_filters, args.no_ext_feats, cuda=args.cuda)
+    net = QAModel(vec_dim, args.filter_width, args.num_conv_filters, args.no_ext_feats, cuda=args.cuda, ext_feats_size=args.num_ext_feats)
 
     # initialize the trainer
     trainer = Trainer(net, args.eta, args.mom, args.no_loss_reg, vec_dim, args.cuda)
     logger.info("Loading input data...")
     # load input data
-    trainer.load_input_data(args.dataset_folder, cache_file, train_set, dev_set, test_set)
+    trainer.load_input_data(args.dataset_folder, cache_file, train_set, dev_set, test_set, num_ext_feats=args.num_ext_feats)
     logger.info("Setting up external features...")
     # setup external features
     # TODO: remember to update args.* in testing loop below
-    if args.paper_ext_feats:
+
+    
+
+    if args.paper_ext_feats_stem:
+        logger.info("--paper-ext-feats-stem")
+        ext_feats_for_splits = \
+            set_external_features_as_per_paper_and_stem(trainer, args.index_for_corpusIDF)
+    elif args.features_path_prefix:
+        logger.info("--features-path-prefix")
+        ext_feats_for_splits = \
+            load_external_features_from_files(trainer, args.features_path_prefix, args.norm)
+    elif args.paper_ext_feats:
         logger.info("--paper-ext-feats")
         ext_feats_for_splits = \
             set_external_features_as_per_paper(trainer, args.index_for_corpusIDF)
         # ^^ we are saving the features to be used while testing at the end of training
-    elif args.paper_ext_feats_stem:
-        logger.info("--paper-ext-feats-stem")
-        ext_feats_for_splits = \
-            set_external_features_as_per_paper_and_stem(trainer, args.index_for_corpusIDF)
 
 
     if not args.skip_training:

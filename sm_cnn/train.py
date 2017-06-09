@@ -44,7 +44,8 @@ class Trainer(object):
 
 
     def load_input_data(self, dataset_root_folder, word_vectors_cache_file, \
-            train_set_folder, dev_set_folder, test_set_folder, load_ext_feats=True):
+            train_set_folder, dev_set_folder, test_set_folder, load_ext_feats=True, \
+            num_ext_feats=4):
         for set_folder in [test_set_folder, dev_set_folder, train_set_folder]:
             if set_folder:
                 questions, sentences, labels, maxlen_q, maxlen_s, vocab = \
@@ -52,7 +53,7 @@ class Trainer(object):
 
                 self.data_splits[set_folder] = [questions, sentences, labels, maxlen_q, maxlen_s]
 
-                default_ext_feats = [np.zeros(4)] * len(self.data_splits[set_folder][0])
+                default_ext_feats = [np.zeros(num_ext_feats)] * len(self.data_splits[set_folder][0])
                 self.data_splits[set_folder].append(default_ext_feats)
 
                 utils.load_cached_embeddings(word_vectors_cache_file, vocab, self.embeddings,
