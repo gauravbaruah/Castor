@@ -4,6 +4,7 @@ import os
 import shlex
 import subprocess
 import sys
+from shutil import copyfile
 
 import numpy as np
 import pandas as pd
@@ -12,8 +13,7 @@ from collections import Counter
 
 import utils
 from external_features import stopped, stemmed, compute_idf_weighted_overlap, compute_overlap,\
-    get_qadata_only_idf, set_external_features_as_per_paper,\
-    set_external_features_as_per_paper_and_stem
+    get_qadata_only_idf, set_external_features_as_per_paper
 from train import Trainer
 from model import QAModel
 
@@ -44,7 +44,7 @@ def compute_map_mrr(dataset_folder, set_folder, test_scores, run_name_prefix=Non
     docno_range = np.arange(N)
     if 'WikiQA' in dataset_folder:
         qid_counts = Counter(qids_test)
-        docno_range = np.hstack([np.arange(count) for qid, count in qid_counts])
+        docno_range = np.hstack([np.arange(count) for qid, count in qid_counts.items()])
     
     # Call TrecEval code to calc MAP and MRR
     df_submission = pd.DataFrame(index=np.arange(N), \
@@ -66,7 +66,11 @@ def compute_map_mrr(dataset_folder, set_folder, test_scores, run_name_prefix=Non
     df_gold['iter'] = 0
     df_gold['docno'] = docno_range
     df_gold['rel'] = y_test
-    df_gold.to_csv(os.path.join(args.dataset_folder, 'gold.txt'), header=False, index=False, sep=' ')
+    df_gold.to_csv(os.path.join(dataset_folder, 'gold.txt'), header=False, index=False, sep=' ')
+    
+    if 'WikiQA' in dataset_folder:
+        copyfile(os.path.join(dataset_folder, '{}.qrel'.format(set_folder)), 
+		 os.path.join(dataset_folder, 'gold.txt'))
 
     # subprocess.call("/bin/sh run_eval.sh '{}'".format(args.dataset_folder), shell=True)
     pargs = shlex.split("/bin/sh run_eval.sh '{}'".format(dataset_folder))

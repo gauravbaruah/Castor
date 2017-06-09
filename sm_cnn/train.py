@@ -1,5 +1,6 @@
 import time
 
+from tqdm import tqdm
 import numpy as np
 import torch
 import torch.nn as nn
@@ -159,7 +160,7 @@ class Trainer(object):
 
         # logger.info('{}_correct {}'.format(set_folder, total_correct))
         # logger.info('{}_loss {}'.format(set_folder, total_loss.data[0]))
-        logger.info('{} total {}'.format(set_folder, len(labels)))
+        # logger.info('{} total {}'.format(set_folder, len(labels)))
         # logger.info('{}_loss = {:.4f}, acc = {:.4f}'.format(set_folder, total_loss.data[0]/len(labels), float(total_correct)/len(labels))
         #logger.info('{}_loss = {:.4f}'.format(set_folder, total_loss.data[0]/len(labels)))
 
