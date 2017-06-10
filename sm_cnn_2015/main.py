@@ -76,7 +76,7 @@ def compute_map_mrr(dataset_folder, set_folder, test_scores, run_name_prefix=Non
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description='pytorch port of the SM model', \
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    ap.add_argument('model-outfile', \
+    ap.add_argument('model_outfile', \
         help='file to save final model')
     ap.add_argument('--word-vectors-file', \
         help='NOTE: a cache will be created for faster loading for word vectors',\
@@ -129,6 +129,7 @@ if __name__ == "__main__":
         help="fetches idf from Index. provide index path. will generate a vocabFile")
 
     args = ap.parse_args()
+    #print(args)
 
     torch.manual_seed(1234)
     np.random.seed(1234)
@@ -159,8 +160,7 @@ if __name__ == "__main__":
 
         for i in range(args.epochs):
             logger.info('------------- Training epoch {} --------------'.format(i+1))
-            train_accuracy = trainer.train(train_set, args.batch_size)
-            sys.exit()
+            train_accuracy = trainer.train(train_set, args.batch_size)            
             dev_scores = trainer.test(dev_set, args.batch_size)
             
             dev_map, dev_mrr = compute_map_mrr(args.dataset_folder, dev_set, dev_scores)
@@ -170,7 +170,7 @@ if __name__ == "__main__":
                 best_model = i
                 best_map = dev_map
 
-                QAModel.save(net, args.model_outfile)
+                trainer.save_model(args.model_outfile)
                 logger.info('Achieved better dev_map ... saved model')
 
             if args.test_on_each_epoch:
@@ -186,15 +186,15 @@ if __name__ == "__main__":
         logger.info(' ------------ Training epochs completed! ------------')
         logger.info('Best dev MAP in training phase = {:.4f}'.format(best_map))
     
-    evaluator = Trainer(args.eta, args.mom,
-                      args.dataset_folder, train_set, dev_set, test_set,
-                      args.filter_width, args.num_conv_filters, args.model_outfile)
+    evaluator = Trainer(args.dataset_folder, None, None, test_set, # input data
+                        args.word_vectors_file,                            # word embeddings
+                        args.eta, args.mom,                                # optimization params
+                        args.filter_width, args.num_conv_filters,           # model params
+                        args.model_outfile)
 
-    for split in [test_set, dev_set]:
-        evaluator.load_input_data(args.dataset_folder, cache_file, None, None, split)
-        if args.paper_ext_feats or args.paper_ext_feats_stem:
-            evaluator.data_splits[split][-1] = ext_feats_for_splits[split]
-            #set_external_features_as_per_paper(evaluator)
-        split_scores = evaluator.test(split, args.batch_size)
-        map, mrr = compute_map_mrr(args.dataset_folder, split, split_scores, args.run_name_prefix)
-        logger.info("-------{} MAP {}, MRR {}".format(split, map, mrr))
+    if args.paper_ext_feats:
+        evaluator.data_splits[test_set][-1] = ext_feats_for_splits[test_set]
+        #set_external_features_as_per_paper(evaluator)
+    split_scores = evaluator.test(test_set, args.batch_size)
+    map, mrr = compute_map_mrr(args.dataset_folder, test_set, split_scores, args.run_name_prefix)
+    logger.info("-------{} MAP {}, MRR {}".format(test_set, map, mrr))

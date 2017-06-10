@@ -31,7 +31,7 @@ def word2vec_load_bin_vec(word_embeddings_file, words):
                     word.append(ch)
             if word.decode('utf-8') in vocab:
                 count += 1
-                word_vecs[word.decode('utf-8')] = np.fromstring(f.read(binary_len), dtype='float32')                
+                word_vecs[word.decode('utf-8')] = np.fromstring(f.read(binary_len), dtype='float32')
             else:
                 f.read(binary_len)
         print("done")
