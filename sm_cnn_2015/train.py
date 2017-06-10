@@ -71,6 +71,9 @@ class Trainer(object):
             weight_decay=self.reg)
 
 
+    def save_model(self, model_file):
+        QAModel.save(self.model, model_file)
+        
     def regularize_loss(self, loss):
 
         flattened_params = []
@@ -193,7 +196,7 @@ class Trainer(object):
         train_loss, train_correct = 0., 0.
         num_batches = np.ceil(len(questions)/float(batch_size))
 
-        for k in tqdm(range(int(num_batches))):
+        for k in range(int(num_batches)):
             batch_start = k * batch_size
             batch_end = (k+1) * batch_size
 
