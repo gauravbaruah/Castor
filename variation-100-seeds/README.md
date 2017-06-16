@@ -14,5 +14,15 @@ when it is initialized by different random seeds?
 
 ## Details
 
-- np.random.seed()
+- ``torch.manual_seed(...)``, ``np.random.seed(...)``, and/or ``random.seed(...)`` are all set via a new **argument
+``--random_seed`` in sm_cnn**
 
+- Models to test include
+    1. PyTorch sm_cnn
+    2. lua torch sm_cnn
+
+## To Run
+
+```
+python generate_random_seeds.py 100 > 100-random-seeds.txt
+```
