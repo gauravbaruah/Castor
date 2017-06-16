@@ -90,7 +90,8 @@ if __name__ == "__main__":
         help="external features as per the paper", \
         default=True)
     # system arguments
-    ap.add_argument('--cuda', action='store_true', help='use CUDA if available')
+    ap.add_argument('--cuda', action='store_true', \
+        help='use CUDA if available')
     ap.add_argument('--num-threads', type=int, \
         help="the number of simultaneous processes to run", \
         default=4)
@@ -144,7 +145,7 @@ if __name__ == "__main__":
                       args.word_vectors_file,                            # word embeddings
                       args.eta, args.mom,                                # optimization params
                       args.filter_width, args.num_conv_filters,           # convolution params
-		      args.cuda
+                      args.cuda
                      )
 
     # load input data    
@@ -166,7 +167,6 @@ if __name__ == "__main__":
             train_accuracy = trainer.train(train_set, args.batch_size, args.debug_single_batch)
             if args.debug_single_batch: 
                 sys.exit(0)
-
             dev_scores = trainer.test(dev_set, args.batch_size)
             
             dev_map, dev_mrr = compute_map_mrr(args.dataset_folder, dev_set, dev_scores)

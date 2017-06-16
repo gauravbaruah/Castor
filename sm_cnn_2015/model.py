@@ -56,7 +56,8 @@ class QAModel(nn.Module):
             self.conv_q, self.conv_a = self.conv_q.cuda(), self.conv_a.cuda()
             self.combined_feature_vector = self.combined_feature_vector.cuda()
             self.combined_features_activation = self.combined_features_activation.cuda()
-            self.dropout, self.hidden, self.logsoftmax = self.dropout.cuda(), self.hidden.cuda(), self.logsoftmax.cuda()
+            self.dropout, self.hidden, self.logsoftmax = \
+                self.dropout.cuda(), self.hidden.cuda(), self.logsoftmax.cuda()
 
     def forward(self, question, answer, ext_feats):
 

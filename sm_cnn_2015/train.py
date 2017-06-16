@@ -220,7 +220,6 @@ class Trainer(object):
             if debug_single_batch:
                 break
 
-
         print('train_correct {}'.format(train_correct))
         print('train_loss {}'.format(train_loss))
         print('total training batches = {}'.format(num_batches))
