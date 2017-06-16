@@ -22,11 +22,11 @@ logger.addHandler(ch)
 
 class Trainer(object):
 
-    def __init__(self, model, eta, mom, no_loss_reg, vec_dim, cuda=False):
+    def __init__(self, model, eta, mom, no_loss_reg, vec_dim, cuda=False, random_seed=1234):
         # set the random seeds for every instance of trainer.
         # needed to ensure reproduction of random word vectors for out of vocab terms
-        torch.manual_seed(1234)
-        np.random.seed(1234)
+        torch.manual_seed(random_seed)
+        np.random.seed(random_seed)
         self.cuda = cuda
         self.unk_term = np.random.uniform(-0.25, 0.25, vec_dim)
 

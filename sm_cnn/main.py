@@ -91,6 +91,8 @@ if __name__ == "__main__":
     ap.add_argument('--paper-ext-feats-stem', action="store_true", \
         help="external features as per the paper")
     # system arguments
+    ap.add_argument('--random-seed', type=int, default=1234, \
+        help="sets the random seed to the given value")
     ap.add_argument('--cuda', action='store_true', help='use CUDA if available')
     ap.add_argument('--num_threads', help="the number of simultaneous processes to run", \
         type=int, default=4)
@@ -121,8 +123,8 @@ if __name__ == "__main__":
 
     args = ap.parse_args()
 
-    torch.manual_seed(1234)
-    np.random.seed(1234)
+    torch.manual_seed(args.random_seed)
+    np.random.seed(args.random_seed)
     torch.set_num_threads(args.num_threads)
 
     train_set, dev_set, test_set = 'train-all', 'raw-dev', 'raw-test'
@@ -139,7 +141,8 @@ if __name__ == "__main__":
     net = QAModel(vec_dim, args.filter_width, args.num_conv_filters, args.no_ext_feats, cuda=args.cuda)
 
     # initialize the trainer
-    trainer = Trainer(net, args.eta, args.mom, args.no_loss_reg, vec_dim, args.cuda)
+    trainer = Trainer(net, args.eta, args.mom, args.no_loss_reg, vec_dim, args.cuda,
+                      args.random_seed)
     logger.info("Loading input data...")
     # load input data
     trainer.load_input_data(args.dataset_folder, cache_file, train_set, dev_set, test_set)
@@ -192,7 +195,8 @@ if __name__ == "__main__":
         logger.info('Best dev MAP in training phase = {:.4f}'.format(best_map))
 
     trained_model = QAModel.load(args.model_outfile)
-    evaluator = Trainer(trained_model, args.eta, args.mom, args.no_loss_reg, vec_dim, args.cuda)
+    evaluator = Trainer(trained_model, args.eta, args.mom, args.no_loss_reg, vec_dim, args.cuda,
+                        args.random_seed)
 
     for split in [test_set, dev_set]:
         evaluator.load_input_data(args.dataset_folder, cache_file, None, None, split)
