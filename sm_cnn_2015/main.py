@@ -90,7 +90,7 @@ if __name__ == "__main__":
         help="external features as per the paper", \
         default=True)
     # system arguments
-    # TODO: add arguments for CUDA
+    ap.add_argument('--cuda', action='store_true', help='use CUDA if available')
     ap.add_argument('--num-threads', type=int, \
         help="the number of simultaneous processes to run", \
         default=4)
@@ -116,6 +116,8 @@ if __name__ == "__main__":
         default=5, \
         help="if there is no appreciable change in model after <patience> epochs, then stop")
     # debugging arguments
+    ap.add_argument('--debug_single_batch', action="store_true", \
+        help="will stop program after training 1 input batch")
     ap.add_argument('--num-conv-filters', \
         default=100, type=int, \
         help="the number of convolution channels (lesser is faster)")
@@ -141,7 +143,8 @@ if __name__ == "__main__":
     trainer = Trainer(args.dataset_folder, train_set, dev_set, test_set, # input data
                       args.word_vectors_file,                            # word embeddings
                       args.eta, args.mom,                                # optimization params
-                      args.filter_width, args.num_conv_filters           # model params
+                      args.filter_width, args.num_conv_filters,           # convolution params
+		      args.cuda
                      )
 
     # load input data    
@@ -160,7 +163,10 @@ if __name__ == "__main__":
 
         for i in range(args.epochs):
             logger.info('------------- Training epoch {} --------------'.format(i+1))
-            train_accuracy = trainer.train(train_set, args.batch_size)            
+            train_accuracy = trainer.train(train_set, args.batch_size, args.debug_single_batch)
+            if args.debug_single_batch: 
+                sys.exit(0)
+
             dev_scores = trainer.test(dev_set, args.batch_size)
             
             dev_map, dev_mrr = compute_map_mrr(args.dataset_folder, dev_set, dev_scores)
@@ -189,7 +195,8 @@ if __name__ == "__main__":
     evaluator = Trainer(args.dataset_folder, None, None, test_set, # input data
                         args.word_vectors_file,                            # word embeddings
                         args.eta, args.mom,                                # optimization params
-                        args.filter_width, args.num_conv_filters,           # model params
+                        args.filter_width, args.num_conv_filters,           # convolution params
+                        args.cuda,
                         args.model_outfile)
 
     if args.paper_ext_feats:

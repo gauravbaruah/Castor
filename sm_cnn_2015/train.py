@@ -17,7 +17,8 @@ class Trainer(object):
     def __init__(self, dataset_folder, train_set, dev_set, test_set,    # input data
                  word_vectors_file,                                     # word embeddings
                  eta, mom,                                              # optimization params
-                 filter_width, num_conv_filters,                        # model params
+                 filter_width, num_conv_filters,                        # convolution params
+                 cuda=False,
                  load_model_file=None):                                 # load model file
                 
         # reset the random seeds for every instance of trainer.
@@ -64,7 +65,8 @@ class Trainer(object):
         if load_model_file:
             self.model = QAModel.load(load_model_file)
         else:
-            self.model = QAModel(self.vec_dim, filter_width, num_conv_filters)
+            self.model = QAModel(self.vec_dim, filter_width, num_conv_filters, cuda)
+        self.cuda = cuda
 
         # optimization parameters
         self.reg = 1e-5
@@ -184,7 +186,7 @@ class Trainer(object):
         return y_pred
 
 
-    def train(self, set_folder, batch_size):
+    def train(self, set_folder, batch_size, debug_single_batch):
         train_start_time = time.time()
 
         questions, sentences, labels, maxlen_q, maxlen_s, ext_feats = \
@@ -215,6 +217,8 @@ class Trainer(object):
             #logger.debug('batch_loss {}, batch_correct {}'.format(batch_loss, batch_correct))
             train_loss += batch_loss
             train_correct += batch_correct
+            if debug_single_batch:
+                break
 
 
         print('train_correct {}'.format(train_correct))
