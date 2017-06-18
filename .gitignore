@@ -2,3 +2,5 @@
 .idea/
 *idfsim
 *.swp
+*model
+*log

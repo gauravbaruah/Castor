@@ -34,7 +34,7 @@ def logargs(func):
     return inner
 
 
-def compute_map_mrr(dataset_folder, set_folder, test_scores, run_name_prefix=None):
+def compute_map_mrr(dataset_folder, set_folder, test_scores, run_name_prefix=None, random_seed=1234):
     # logger.info("Running trec_eval script...")
     N = len(test_scores)
 
@@ -49,7 +49,8 @@ def compute_map_mrr(dataset_folder, set_folder, test_scores, run_name_prefix=Non
     df_submission['rank'] = 0
     df_submission['sim'] = test_scores
     df_submission['run_id'] = 'smmodel'
-    df_submission.to_csv(os.path.join(dataset_folder, 'submission.txt'), \
+    df_submission.to_csv( \
+        os.path.join(dataset_folder, 'submission.seed={}.txt'.format(random_seed)), \
         header=False, index=False, sep=' ')
     if run_name_prefix:
         df_submission.to_csv('{}.{}.smrun'.format(run_name_prefix, set_folder),\
@@ -60,10 +61,11 @@ def compute_map_mrr(dataset_folder, set_folder, test_scores, run_name_prefix=Non
     df_gold['iter'] = 0
     df_gold['docno'] = np.arange(N)
     df_gold['rel'] = y_test
-    df_gold.to_csv(os.path.join(args.dataset_folder, 'gold.txt'), header=False, index=False, sep=' ')
+    df_gold.to_csv(os.path.join(args.dataset_folder, 'gold.seed={}.txt'.format(random_seed)),\
+        header=False, index=False, sep=' ')
 
     # subprocess.call("/bin/sh run_eval.sh '{}'".format(args.dataset_folder), shell=True)
-    pargs = shlex.split("/bin/sh run_eval.sh '{}'".format(dataset_folder))
+    pargs = shlex.split("/bin/sh run_eval.sh '{}' '{}'".format(dataset_folder, random_seed))
     p = subprocess.Popen(pargs, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     pout, perr = p.communicate()
 
@@ -171,7 +173,7 @@ if __name__ == "__main__":
 
             dev_scores = trainer.test(dev_set, args.batch_size)
 
-            dev_map, dev_mrr = compute_map_mrr(args.dataset_folder, dev_set, dev_scores)
+            dev_map, dev_mrr = compute_map_mrr(args.dataset_folder, dev_set, dev_scores, random_seed=args.random_seed)
             logger.info("------- MAP {}, MRR {}".format(dev_map, dev_mrr))
 
             if dev_map - best_map > 1e-3: # new map is better than best map
@@ -198,11 +200,11 @@ if __name__ == "__main__":
     evaluator = Trainer(trained_model, args.eta, args.mom, args.no_loss_reg, vec_dim, args.cuda,
                         args.random_seed)
 
-    for split in [test_set, dev_set]:
+    for split in [test_set]: #, dev_set]:
         evaluator.load_input_data(args.dataset_folder, cache_file, None, None, split)
         if args.paper_ext_feats or args.paper_ext_feats_stem:
             evaluator.data_splits[split][-1] = ext_feats_for_splits[split]
             #set_external_features_as_per_paper(evaluator)
         split_scores = evaluator.test(split, args.batch_size)
-        map, mrr = compute_map_mrr(args.dataset_folder, split, split_scores, args.run_name_prefix)
-        logger.info("-------{} MAP {}, MRR {}".format(split, map, mrr))
+        map, mrr = compute_map_mrr(args.dataset_folder, split, split_scores, args.run_name_prefix, args.random_seed)
+        logger.info("-------{} MAP {} , MRR {}".format(split, map, mrr))

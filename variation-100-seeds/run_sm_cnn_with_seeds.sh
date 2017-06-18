@@ -13,7 +13,7 @@ pushd ../sm_cnn/
 for seed in $seed_list;
 do
     echo $seed
-    python main.py sm_cnn.seed=$seed.model --paper-ext-feats --random-seed $seed > sm_cnn.seed=$seed.log 2>&1
+    /usr/bin/time -o $seed.time.log python main.py sm_cnn.seed=$seed.model --paper-ext-feats --random-seed $seed > sm_cnn.seed=$seed.log 2>&1 
 done
 
 popd
